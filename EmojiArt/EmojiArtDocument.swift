@@ -8,49 +8,77 @@
 import SwiftUI
 
 class EmojiArtDocument: ObservableObject{
-    
     typealias Emoji = EmojiArt.Emoji
     
-    @Published private var emojiArt = EmojiArt(){
-        didSet{
-            autoSave()
+    @Published private var emojiArt = EmojiArt() {
+        didSet {
+            autosave()
         }
     }
-    private let autoSaveUrl : URL = URL.documentsDirectory.appendingPathComponent("AutoSaved.emojiArt")
-    private func autoSave(){
-        save(to: autoSaveUrl)
-        print("AutoSaved to", autoSaveUrl)
+    
+    private let autosaveURL: URL = URL.documentsDirectory.appendingPathComponent("Autosaved.emojiart")
+    
+    private func autosave() {
+        save(to: autosaveURL)
+        print("autosaved to \(autosaveURL)")
     }
-    private func save(to url: URL){
-        do{
+    
+    private func save(to url: URL) {
+        do {
             let data = try emojiArt.json()
             try data.write(to: url)
+        } catch let error {
+            print("EmojiArtDocument: error while saving \(error.localizedDescription)")
         }
-        catch let error{
-            print("EmojiArtDocument error while saving",error.localizedDescription)
-        }
-        print("AutoSaved to", autoSaveUrl)
     }
     
     init() {
-        if let data = try? Data(contentsOf: autoSaveUrl),let autoSavedEmojiArt = try? EmojiArt(json: data){
-            emojiArt = autoSavedEmojiArt
+        if let data = try? Data(contentsOf: autosaveURL),
+           let autosavedEmojiArt = try? EmojiArt(json: data) {
+            emojiArt = autosavedEmojiArt
         }
     }
     
-    var emojis: [Emoji]{
-        emojiArt.emoji
+    var emojis: [Emoji] {
+        emojiArt.emojis
     }
-    var background : URL?{
+    
+    var background: URL? {
         emojiArt.background
     }
     
-    //MARK: Intents
-    func setBackground(_ url: URL?){
+    // MARK: - Intent(s)
+    
+    func setBackground(_ url: URL?) {
         emojiArt.background = url
     }
-    func addEmoji(_ emoji: String, at position: Emoji.Positionn, size: Int){
-        emojiArt.addEmoji(emoji, at: position, size: size)
+    
+    func addEmoji(_ emoji: String, at position: Emoji.Positionn, size: CGFloat) {
+        emojiArt.addEmoji(emoji, at: position, size: Int(size))
+    }
+    
+    func move(_ emoji: Emoji, by offset: CGOffset) {
+        let existingPosition = emojiArt[emoji].position
+        emojiArt[emoji].position = Emoji.Positionn(
+            x: existingPosition.x + Int(offset.width),
+            y: existingPosition.y - Int(offset.height)
+        )
+    }
+    
+    func move(emojiWithId id: Emoji.ID, by offset: CGOffset) {
+        if let emoji = emojiArt[id] {
+            move(emoji, by: offset)
+        }
+    }
+    
+    func resize(_ emoji: Emoji, by scale: CGFloat) {
+        emojiArt[emoji].size = Int(CGFloat(emojiArt[emoji].size) * scale)
+    }
+    
+    func resize(emojiWithId id: Emoji.ID, by scale: CGFloat) {
+        if let emoji = emojiArt[id] {
+            resize(emoji, by: scale)
+        }
     }
 }
 extension EmojiArt.Emoji{

@@ -10,7 +10,7 @@ import Foundation
 struct EmojiArt: Codable{
     
     var background: URL?
-    private (set) var emoji = [Emoji]()
+    private(set) var emojis = [Emoji]()
     
     func json() throws ->  Data{
          let encoded = try JSONEncoder().encode(self)
@@ -30,23 +30,52 @@ struct EmojiArt: Codable{
     
     mutating func addEmoji(_ emoji: String, at position: Emoji.Positionn, size: Int){
         self.uniqueEmojiId += 1
-        self.emoji.append(Emoji(
-            id: uniqueEmojiId,
+        self.emojis.append(Emoji(
             string: emoji,
             position: position,
-            size: size))
-        
+            size: size,
+            id: uniqueEmojiId
+        ))
     }
     
-    struct Emoji: Identifiable, Codable{
-        var id: Int
+    subscript(_ emojiId: Emoji.ID) -> Emoji? {
+        if let index = index(of: emojiId) {
+            return emojis[index]
+        } else {
+            return nil
+        }
+    }
+
+    subscript(_ emoji: Emoji) -> Emoji {
+        get {
+            if let index = index(of: emoji.id) {
+                return emojis[index]
+            } else {
+                return emoji // should probably throw error
+            }
+        }
+        set {
+            if let index = index(of: emoji.id) {
+                emojis[index] = newValue
+            }
+        }
+    }
+    
+    private func index(of emojiId: Emoji.ID) -> Int? {
+        emojis.firstIndex(where: { $0.id == emojiId })
+    }
+    
+    struct Emoji: Identifiable, Codable {
         let string: String
         var position: Positionn
         var size: Int
+        var id: Int
         
-        struct Positionn: Codable{
-            var x: CGFloat
-            var y: CGFloat
+        struct Positionn: Codable {
+            var x: Int
+            var y: Int
+            
+            static let zero = Self(x: 0, y: 0)
         }
     }
 }

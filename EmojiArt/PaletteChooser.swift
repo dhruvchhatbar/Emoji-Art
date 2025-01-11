@@ -9,42 +9,31 @@ import SwiftUI
 
 struct PaletteChooser: View {
     @EnvironmentObject var store: PaletteStore
+    
     var body: some View {
-        HStack{
+        HStack {
             chooser
             view(for: store.palettes[store.cursorIndex])
         }
         .clipped()
     }
-    var chooser: some View{
-        AnimatedActionButton(systemImage: "paintpalette", action: {
+    
+    private var chooser: some View {
+        AnimatedActionButton(systemImage: "paintpalette") {
             store.cursorIndex += 1
-        })
-        .contextMenu{
-//            gotoMenu
+        }
+        .contextMenu {
             AnimatedActionButton("New", systemImage: "plus") {
-                store.append(Palette(name: "Math", emojis: "➕➖♾️➗"))
+                store.insert(name: "Math", emojis: "+−×÷∝∞")
             }
-            AnimatedActionButton("Delete", systemImage: "minus.circle",role: .destructive) {
+            AnimatedActionButton("Delete", systemImage: "minus.circle", role: .destructive) {
                 store.palettes.remove(at: store.cursorIndex)
             }
-            
         }
     }
     
-    private var gotoMenu: some View{
-        Menu{
-            ForEach(store.palettes){ palette in
-                AnimatedActionButton(palette.name){
-                }
-            }
-        }label: {
-            Label("Go to", systemImage: "text.insert")
-        }
-    }
-    
-    func view(for palette: Palette) -> some View{
-        HStack{
+    private func view(for palette: Palette) -> some View {
+        HStack {
             Text(palette.name)
             ScrollingEmojis(palette.emojis)
         }
@@ -52,25 +41,29 @@ struct PaletteChooser: View {
         .transition(.asymmetric(insertion: .move(edge: .bottom), removal: .move(edge: .top)))
     }
 }
+
 struct ScrollingEmojis: View {
-    let emojies: [String]
-    init(_ emojies: String) {
-        self.emojies = emojies.uniqued.map({String($0)})
+    let emojis: [String]
+    
+    init(_ emojis: String) {
+        self.emojis = emojis.uniqued.map(String.init)
     }
+    
     var body: some View {
         ScrollView(.horizontal) {
             HStack {
-                ForEach(emojies,id: \.self, content: { emoji in
+                ForEach(emojis, id: \.self) { emoji in
                     Text(emoji)
                         .draggable(emoji)
-                })
+                }
             }
         }
     }
 }
 
-
-#Preview {
-    PaletteChooser()
-        .environmentObject(PaletteStore(named: "Preview"))
+struct PaletteChooser_Previews: PreviewProvider {
+    static var previews: some View {
+        PaletteChooser()
+            .environmentObject(PaletteStore(named: "Preview"))
+    }
 }
