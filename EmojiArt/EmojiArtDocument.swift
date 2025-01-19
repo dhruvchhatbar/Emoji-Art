@@ -6,13 +6,39 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 
-class EmojiArtDocument: ObservableObject{
+extension UTType{
+    static let emojiArt = UTType(exportedAs: "edu.stanford.cs193p.emojiart")
+}
+
+class EmojiArtDocument: ReferenceFileDocument{
+    func snapshot(contentType: UTType) throws -> Data {
+        try emojiArt.json()
+    }
+    
+    func fileWrapper(snapshot: Data, configuration: WriteConfiguration) throws -> FileWrapper {
+        FileWrapper(regularFileWithContents: snapshot)
+    }
+    
+    static var readableContentTypes: [UTType]{
+        [.emojiArt]
+    }
+    
+    required init(configuration: ReadConfiguration) throws {
+        if let data = configuration.file.regularFileContents{
+            
+        }
+        else{
+            throw CocoaError(.fileReadCorruptFile)
+        }
+    }
+    
     typealias Emoji = EmojiArt.Emoji
     
     @Published private var emojiArt = EmojiArt() {
         didSet {
-            autosave()
+//            autosave()
             if emojiArt.background != oldValue.background{
                 Task{
                     await fetchBackgroundImg()
@@ -21,27 +47,27 @@ class EmojiArtDocument: ObservableObject{
         }
     }
     
-    private let autosaveURL: URL = URL.documentsDirectory.appendingPathComponent("Autosaved.emojiart")
-    
-    private func autosave() {
-        save(to: autosaveURL)
-        print("autosaved to \(autosaveURL)")
-    }
-    
-    private func save(to url: URL) {
-        do {
-            let data = try emojiArt.json()
-            try data.write(to: url)
-        } catch let error {
-            print("EmojiArtDocument: error while saving \(error.localizedDescription)")
-        }
-    }
+//    private let autosaveURL: URL = URL.documentsDirectory.appendingPathComponent("Autosaved.emojiart")
+//    
+//    private func autosave() {
+//        save(to: autosaveURL)
+//        print("autosaved to \(autosaveURL)")
+//    }
+//    
+//    private func save(to url: URL) {
+//        do {
+//            let data = try emojiArt.json()
+//            try data.write(to: url)
+//        } catch let error {
+//            print("EmojiArtDocument: error while saving \(error.localizedDescription)")
+//        }
+//    }
     
     init() {
-        if let data = try? Data(contentsOf: autosaveURL),
-           let autosavedEmojiArt = try? EmojiArt(json: data) {
-            emojiArt = autosavedEmojiArt
-        }
+//        if let data = try? Data(contentsOf: autosaveURL),
+//           let autosavedEmojiArt = try? EmojiArt(json: data) {
+//            emojiArt = autosavedEmojiArt
+//        }
     }
     
     var emojis: [Emoji] {
@@ -129,8 +155,21 @@ class EmojiArtDocument: ObservableObject{
     }
     // MARK: - Intent(s)
     
-    func setBackground(_ url: URL?) {
-        emojiArt.background = url
+    private func undoablyPerform(_ action: String,with undoManager: UndoManager? = nil, doit: ()->Void){
+        let oldEmojiArt = emojiArt
+        doit()
+        undoManager?.registerUndo(withTarget: self) { myself in //Redo -> Undoing and Undo
+            myself.undoablyPerform(action, with: undoManager) {
+                myself.emojiArt = oldEmojiArt
+            }
+        }
+        undoManager?.setActionName(action)
+    }
+    
+    func setBackground(_ url: URL?, undoWith undoManager: UndoManager? = nil) {
+        undoablyPerform("Set Background", with: undoManager) {
+            emojiArt.background = url
+        }
     }
     
     func addEmoji(_ emoji: String, at position: Emoji.Positionn, size: CGFloat) {
